@@ -76,6 +76,7 @@ if os.path.exists(output_file):
 # constant values
 log_K_H2 = 0.
 log_K_C = 0.
+log_K_O2 = 0.
 M_C = 12.011 # kg/kmol
 M_H = 1.008 # kg/kmol
 M_O = 15.999 # kg/kmol
@@ -156,6 +157,59 @@ def log_K_CO2(T):
 def log_K_H2O(T):
     return np.polyval(coef_H2O, 1/T)
 
+# logK plot of oxidation and reduction reactions
+def log_K_1(T): # C + O2 -> CO2 - 1st oxydation reaction
+    return log_K_CO2(T) - (log_K_C + log_K_O2) 
+def log_K_2(T): # C + 1/2 O2 -> CO - 2nd oxydation reaction
+    return log_K_CO(T) - (log_K_C + 0.5*log_K_O2) 
+def log_K_3(T): # H2 + 1/2 O2 -> H2O - 3rd oxydation reaction
+    return log_K_H2O(T) - (log_K_H2 + 0.5*log_K_O2) 
+def log_K_4(T): # C + CO2 <-> 2CO - Boudouard reaction (reduction)
+    return 2*log_K_CO(T) - (log_K_C + log_K_CO2(T)) 
+def log_K_5(T): # C + H2O <-> CO + H2 - char and steam reduction reaction
+    return log_K_CO(T) + log_K_H2 - (log_K_C + log_K_H2O(T))
+def log_K_6(T): # CO + H2O <-> CO2 + H2 - Water Gas Shift reaction (reduction)
+    return log_K_CO2(T) + log_K_H2 - (log_K_CO(T) + log_K_H2O(T))
+def log_K_7(T): # C + 2H2 <-> CH4 - methanization reaction (reduction)
+    return log_K_CH4(T) - (log_K_C + 2*log_K_H2)
+def log_K_8(T): # CH4 + H2O <-> CO2 + 3H2 - steam reforming reaction (reduction)
+    return log_K_CO2(T) + 3*log_K_H2 - (log_K_CH4(T) + log_K_H2O(T))
+T = np.linspace(200, 2500, 200)
+fig1, ax1 = plt.subplots(figsize=(7,4))
+ax1.plot(1/T, log_K_1(T), label='popolno zgorevanje ogljika')
+ax1.plot(1/T, log_K_2(T), label='nepopolno zgorevanje ogljika')
+ax1.plot(1/T, log_K_3(T), label='popolno zgorevanje vodika')
+ax1.plot(1/T, log_K_4(T), label='Boudouardova reakcija')
+ax1.plot(1/T, log_K_5(T), label='reakcija oglja z vodo')
+ax1.plot(1/T, log_K_6(T), label='reakcija CO z vodno paro (WGS)')
+ax1.plot(1/T, log_K_7(T), label='reakcija metanacije')
+ax1.plot(1/T, log_K_8(T), label='parni reforming metana')
+
+# Add secondary x-axis (Temperature T)
+ax2 = ax1.secondary_xaxis('top')
+ax2.set_xlabel('$T$ [K]')
+
+# Get primary x-axis ticks
+primary_ticks = ax1.get_xticks()
+
+# Filter valid values (avoid division by zero)
+valid_ticks = primary_ticks[primary_ticks > 0]
+
+# Set secondary x-axis ticks at the same locations
+ax2.set_xticks(valid_ticks)
+ax2.set_xticklabels([f"{int(1/tick)}" for tick in valid_ticks])  # Convert 1/T to T and format
+
+
+
+#ax1.set_xlim([0,0.0051])
+ax1.set_ylim([-50,150])
+ax1.legend(loc='upper left', ncol=2)
+ax1.set_xlabel('$1/T$ [1/K]')
+ax1.set_ylabel('$\log K$ [/]')
+fig1.tight_layout()  # Adjust layout for better spacing
+fig1.savefig('results_log_K_T_rections.png', format='png', dpi=300, bbox_inches='tight')
+
+'''
 # get proximate and ultimate analysis data from literature saved in files
 biomass = pd.read_csv('biomass.txt', sep=",")
 model_Piks = pd.read_csv('gas_composition_basic_model_Piks.txt', sep=",", header=0)
@@ -164,6 +218,7 @@ all_results = []
 ERs = np.arange(0.1, 0.51, 0.01)
 for ER in ERs:
     '''
+'''
 cases = biomass.shape[0]
 for i in np.arange(0, cases, 1):
     
@@ -179,6 +234,7 @@ for i in np.arange(0, cases, 1):
     phi_N = biomass['phi_N'][i]
     phi_O = biomass['phi_O'][i]
     '''
+'''
     phi_N = 0.79
     phi_O = 0.21
     
@@ -294,7 +350,7 @@ df_results = pd.DataFrame(all_results, columns=['MC', 'w_C', 'w_H', 'w_O', ' w_N
 with pd.ExcelWriter(str_excel, engine='openpyxl', mode='a',if_sheet_exists='overlay') as writer:
     df_results.to_excel(writer, sheet_name=str_sheet, index=False, startrow=0, startcol=0)
 
-
+'''
 plt.close('all')
 
 end = datetime.datetime.now()

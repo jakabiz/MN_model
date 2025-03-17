@@ -89,9 +89,10 @@ os.environ["MATPLOTLIB_FORCE_DPI"] = "300"
 start = datetime.datetime.now() # stopwatch the time of loop calculation
 
 # Load the Excel file
-str_excel_1 = 'MN_model_results.xlsx'
-str_excel_2 = 'MN_model_results_n_C_r.xlsx'
- 
+str_excel_2 = 'MN_model_results_n_C_r.xlsx' # ref. model - variable solid residual C
+str_excel_1 = 'MN_model_results.xlsx' # fixed solid residual C - 5 %
+str_excel_3 = 'MN_model_results_contour_data.xlsx' 
+
 take_from = np.arange(0.1, 0.51, 0.01)
 take_from_str = ["%.2f" % number for number in take_from]
 
@@ -112,19 +113,19 @@ for value in take_from_str:
     df_2 = pd.read_excel(str_excel_2, sheet_name=str_sheet)
     df_phi_21 = pd.concat([df_phi_21, df_1[df_1['phi_O'] == 21]], ignore_index=True)
     df_phi_60 = pd.concat([df_phi_60, df_1[df_1['phi_O'] == 60]], ignore_index=True)
-    df_CO_err[str(value)] = 1 - df_1['CO']/df_2['CO']
-    df_H2_err[str(value)] = 1 - df_1['H2']/df_2['H2']
-    df_CH4_err[str(value)] = 1 - df_1['CH4']/df_2['CH4']
-    df_CO2_err[str(value)] = 1 - df_1['CO2']/df_2['CO2']
-    df_N2_err[str(value)] = 1 - df_1['N2']/df_2['N2']
-    df_T_err[str(value)] = 1 - df_1['T [K]']/df_2['T [K]']
-    df_CGE_err[str(value)] = 1 - df_1['CGE']/df_2['CGE']
-    df_CGE_tot_err[str(value)] = 1 - df_1['CGE_tot']/df_2['CGE_tot']
-    df_GY_err[str(value)] = 1 - df_1['GY']/df_2['GY']
-    df_LHV_err[str(value)] = 1 - df_1['LHV_g [MJ/kg]']/df_2['LHV_g [MJ/kg]']
+    df_CO_err[str(value)] = df_1['CO']/df_2['CO'] - 1
+    df_H2_err[str(value)] = df_1['H2']/df_2['H2'] - 1
+    df_CH4_err[str(value)] = df_1['CH4']/df_2['CH4'] - 1
+    df_CO2_err[str(value)] = df_1['CO2']/df_2['CO2'] - 1
+    df_N2_err[str(value)] = df_1['N2']/df_2['N2'] - 1
+    df_T_err[str(value)] = df_1['T [K]']/df_2['T [K]'] - 1
+    df_CGE_err[str(value)] = df_1['CGE']/df_2['CGE'] - 1
+    df_CGE_tot_err[str(value)] = df_1['CGE_tot']/df_2['CGE_tot'] - 1
+    df_GY_err[str(value)] = df_1['GY']/df_2['GY'] - 1
+    df_LHV_err[str(value)] = df_1['LHV_g [MJ/kg]']/df_2['LHV_g [MJ/kg]'] - 1
 
 
-''' 
+
 # Sample data for the loop (replace with actual dfs)
 dfs = ([df_CO_err, df_H2_err, df_CH4_err, df_CO2_err, df_N2_err, df_T_err, df_CGE_err, df_CGE_tot_err, df_GY_err, df_LHV_err])  # Your dataframes
 save_as = (['CO', 'H$_2$', 'CH$_4$', 'CO$_2$', 'N$_2$', 'T', 'CGE', 'CGE_tot', 'GY', 'LHV'])  # Labels
@@ -134,6 +135,7 @@ for i, df in enumerate(dfs):
     array = dfs[i].to_numpy()[:, 1:]
     fig1, ax1 = plt.subplots(figsize=(3.5, 3.5))
     contour = ax1.contourf(np.arange(0.21,0.96,0.01), take_from, np.transpose(array*100), levels=30, cmap='bwr', norm=mcolors.TwoSlopeNorm(vmin=-20, vmax=20, vcenter=0))  # Contour fill plot
+    #contour = ax1.contourf(np.arange(0.21,0.96,0.01), take_from, np.transpose(array*100), levels=30, cmap='bwr', norm=mcolors.TwoSlopeNorm(vcenter=0))  # Contour fill plot
     fig1.colorbar(contour, ax=ax1)  # Add colorbar
     # Add labels and title
     ax1.set_xlabel('$\\varphi_{O_2}$ [\%]')
@@ -151,10 +153,12 @@ for i, df in enumerate(dfs):
     else:
         ax1.set_title('relativno odstopanje volumskega deleža ' + save_as[i] + ' [\%]')
     fig1.tight_layout()
-    save = save_as[i].replace('$', '')
-    save = save.replace('_', '')
+    save = save_as[i].replace('$_', '')
+    save = save.replace('$', '')
     fig1.savefig('results_err_' + save +  '.png', format='png', dpi=300, bbox_inches='tight')
     plt.close('all')
+    with pd.ExcelWriter(str_excel_3, engine='openpyxl', mode='a',if_sheet_exists='overlay') as writer:
+        dfs[i].to_excel(writer, sheet_name=save + '_err', index=False, startrow=0, startcol=0)
 
 # make all six figs as subfigs in one fig
 fig2, ax2 = plt.subplots(3, 2, figsize=(7, 9.89))  # 2 rows, 3 columns
@@ -209,7 +213,7 @@ for i, df in enumerate(dfs[-4:]):
         ax6[row, col].set_title('relativno odstopanje $LHV_{pp}$ [\%]')
 fig5.tight_layout()  # Adjust layout for better spacing
 fig5.savefig('results_err_phi_i_2.png', format='png', dpi=300, bbox_inches='tight')  # Save the figure as a PNG
-'''
+
 # calculation of RMS betwen NS and S models for phi = 21 % and 60 % 
 RMS_21_res = []
 RMS_60_res = []

@@ -90,6 +90,8 @@ start = datetime.datetime.now() # stopwatch the time of loop calculation
 
 # Load the Excel file
 str_excel_1 = 'MN_model_results.xlsx'
+str_excel_3 = 'MN_model_results_contour_data.xlsx' 
+
  
 take_from = np.arange(0.1, 0.51, 0.01)
 take_from_str = ["%.2f" % number for number in take_from]
@@ -118,7 +120,6 @@ for value in take_from_str:
     df_GY[str(value)] = df_1['GY']
     df_LHV[str(value)] = df_1['LHV_g [MJ/kg]']
     
-
 
 # Sample data for the loop (replace with actual dfs)
 dfs = ([df_CO, df_H2, df_CH4, df_CO2, df_N2, df_T, df_CGE, df_CGE_tot, df_GY, df_LHV])  # Your dataframes
@@ -153,14 +154,21 @@ print(min_max)
 with pd.ExcelWriter(str_excel_1, engine='openpyxl', mode='a',if_sheet_exists='overlay') as writer:
     min_max.to_excel(writer, sheet_name='min_max', index=False, startrow=0, startcol=0)
 
-'''
+# get min and max of CGE
+CGE_max = np.max([df_CGE.to_numpy()[:, 1:], df_CGE_tot.to_numpy()[:, 1:]])
+CGE_min = np.min([df_CGE.to_numpy()[:, 1:], df_CGE_tot.to_numpy()[:, 1:]])
+
+
 # make every fig separately
 for i, df in enumerate(dfs):
     array = dfs[i].to_numpy()[:, 1:]
     array = np.array(array, dtype=np.float64)  # Convert to float
     fig1, ax1 = plt.subplots(figsize=(3.5, 3.5))
-    contour = ax1.contourf(np.arange(0.21,0.96,0.01), take_from, np.transpose(array), levels=30, cmap='viridis')  # Contour fill plot
-    fig1.colorbar(contour, ax=ax1)  # Add colorbar
+    # get min and max of CGE
+    if save_as[i] not in ['CGE', 'CGE_tot']:
+        contour = ax1.contourf(np.arange(0.21,0.96,0.01), take_from, np.transpose(array), levels=30, cmap='viridis')  # Contour fill plot
+    else:
+        contour = ax1.contourf(np.arange(0.21,0.96,0.01), take_from, np.transpose(array), levels=30, cmap='viridis', vmin=CGE_min, vmax=CGE_max)
     # Add labels and title
     ax1.set_xlabel('$\\varphi_{O_2}$ [\%]')
     ax1.set_ylabel('$\lambda$ [/]')
@@ -176,11 +184,14 @@ for i, df in enumerate(dfs):
         ax1.set_title('kurilnost plina $LHV_{pp}$ [MJ/kg]')
     else:
         ax1.set_title('volumski delež ' + save_as[i] + ' [\%]')
+    cbar = plt.colorbar(contour, ax=ax1)  # Attach the colorbar to the correct axis
     fig1.tight_layout()
     save = save_as[i].replace('$_', '')
     save = save.replace('$', '')
     fig1.savefig('results_' + save +  '.png', format='png', dpi=300, bbox_inches='tight')
     plt.close('all')
+    with pd.ExcelWriter(str_excel_3, engine='openpyxl', mode='a',if_sheet_exists='overlay') as writer:
+        dfs[i].to_excel(writer, sheet_name=save, index=False, startrow=0, startcol=0)
 
 # make all six figs as subfigs in one fig
 fig2, ax2 = plt.subplots(3, 2, figsize=(7, 9.89))  # 2 rows, 3 columns
@@ -219,7 +230,10 @@ for i, df in enumerate(dfs[-4:]):
     col = i % 2   # Modulo for column index (0, 1, or 2)
     i = i + 6
     # Create contour plot in the correct subplot (ax6[row, col])
-    contour = ax6[row, col].contourf(np.arange(0.21, 0.96, 0.01)*100, take_from, np.transpose(array), levels=30, cmap='viridis')  # Contour plot
+    if save_as[i] == 'GY' or 'LHV':
+        contour = ax6[row, col].contourf(np.arange(0.21, 0.96, 0.01)*100, take_from, np.transpose(array), levels=30, cmap='viridis')  # Contour plot
+    else:
+        contour = ax6[row, col].contourf(np.arange(0.21, 0.96, 0.01)*100, take_from, np.transpose(array), levels=30, cmap='viridis', vmin=CGE_min, vmax=CGE_max)  # Contour plot
     fig5.colorbar(contour, ax=ax6[row, col])  # Add colorbar
     ax6[row, col].set_xlabel('$\\varphi_{O_2}$ [\%]')  # X-axis label
     ax6[row, col].set_ylabel('$\lambda$ [/]')  # Y-axis label
@@ -343,6 +357,6 @@ ax7.legend(handles=[p1, p2, p3, p4, p5, p6, p27, p28], loc='upper left', ncol=2)
 fig6.tight_layout()  # Adjust layout for better spacing
 fig6.savefig('results_phi_O_60_S_NS.png', format='png', dpi=300, bbox_inches='tight')
 plt.close('all')  # Close the plot after saving and showing
-'''
+
 end = datetime.datetime.now()
 print('\nCalculation time:', end - start) 
